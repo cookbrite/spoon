@@ -46,11 +46,14 @@ public final class SpoonRunner {
   private final String classpath;
   private final IRemoteAndroidTestRunner.TestSize testSize;
   private final boolean failIfNoDeviceConnected;
+  private final int totalNodes;
+  private final int currentNodeIndex;
 
   private SpoonRunner(String title, File androidSdk, File applicationApk, File instrumentationApk,
       File output, boolean debug, boolean noAnimations, int adbTimeout, Set<String> serials,
       String classpath, String className, String methodName,
-      IRemoteAndroidTestRunner.TestSize testSize, boolean failIfNoDeviceConnected) {
+      IRemoteAndroidTestRunner.TestSize testSize, boolean failIfNoDeviceConnected,
+      int totalNodes, int currentNodeIndex) {
     this.title = title;
     this.androidSdk = androidSdk;
     this.applicationApk = applicationApk;
@@ -65,7 +68,9 @@ public final class SpoonRunner {
     this.testSize = testSize;
     this.serials = ImmutableSet.copyOf(serials);
     this.failIfNoDeviceConnected = failIfNoDeviceConnected;
-  }
+    this.totalNodes = totalNodes;
+    this.currentNodeIndex = currentNodeIndex;
+    }
 
   /**
    * Install and execute the tests on all specified devices.
@@ -215,6 +220,8 @@ public final class SpoonRunner {
     private IRemoteAndroidTestRunner.TestSize testSize;
     private int adbTimeout;
     private boolean failIfNoDeviceConnected;
+    private int totalNodez;
+    private int curIndex;
 
     /** Identifying title for this execution. */
     public Builder setTitle(String title) {
@@ -322,6 +329,16 @@ public final class SpoonRunner {
       return this;
     }
 
+    public Builder setTotalNodes(int total) {
+      this.totalNodez = total;
+      return this;
+    }
+
+    public Builder setCurrentNodeIndex(int idx) {
+      this.curIndex = idx;
+      return this;
+    }
+
     public SpoonRunner build() {
       checkNotNull(androidSdk, "SDK is required.");
       checkArgument(androidSdk.exists(), "SDK path does not exist.");
@@ -334,9 +351,15 @@ public final class SpoonRunner {
             "Must specify class name if you're specifying a method name.");
       }
 
+      if (totalNodez > 1) {
+        checkArgument(curIndex > 0 && curIndex <= totalNodez,
+            "current node index cannot be less than 0 or greater than total %d",
+             curIndex);
+      }
+
       return new SpoonRunner(title, androidSdk, applicationApk, instrumentationApk, output, debug,
           noAnimations, adbTimeout, serials, classpath, className, methodName, testSize,
-          failIfNoDeviceConnected);
+          failIfNoDeviceConnected, totalNodez, curIndex);
     }
   }
 
@@ -389,6 +412,13 @@ public final class SpoonRunner {
 
     @Parameter(names = { "-h", "--help" }, description = "Command help", help = true, hidden = true)
     public boolean help;
+
+    @Parameter(names = { "--node-index" },
+        description = "Node Index of current runner, default = 1")
+    public int nodeIndex = 1;
+
+    @Parameter(names = {"--total-nodes" }, description = "Total number of nodes, default = 1")
+    public int totalNodes = 1;
   }
 
   private static File cleanFile(String path) {
@@ -448,6 +478,8 @@ public final class SpoonRunner {
         .setClassName(parsedArgs.className)
         .setMethodName(parsedArgs.methodName)
         .useAllAttachedDevices()
+        .setTotalNodes(parsedArgs.totalNodes)
+        .setCurrentNodeIndex(parsedArgs.nodeIndex)
         .build();
 
     if (!spoonRunner.run() && parsedArgs.failOnFailure) {
