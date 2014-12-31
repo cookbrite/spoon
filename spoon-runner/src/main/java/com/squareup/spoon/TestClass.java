@@ -21,45 +21,46 @@ import java.util.List;
  */
 public class TestClass {
     private final String testClassName;
-	private final List<TestMethod> methods = new ArrayList<TestMethod>();
+    private final List<TestMethod> methods = new ArrayList<TestMethod>();
 
-	public TestClass(String testClassName) {
-		this.testClassName = testClassName;
-	}
+    public TestClass(String testClassName) {
+        this.testClassName = testClassName;
+    }
 
     public String getClassName() {
-		return testClassName;
-	}
-	public void addMethod(String methodString) {
-		this.methods.add(new TestMethod(methodString));
-	}
+        return testClassName;
+    }
+
+    public void addMethod(String methodString) {
+        this.methods.add(new TestMethod(methodString));
+    }
 
     public List<TestMethod> getUnsuppressedMethods() {
-		List<TestMethod> unsuppressedMethods = new ArrayList<TestMethod>();
-		for (TestMethod method : methods) {
-			if (!method.isSuppressed()) {
-				unsuppressedMethods.add(method);
-			}
-		}
-		return unsuppressedMethods;
-	}
+        List<TestMethod> unsuppressedMethods = new ArrayList<TestMethod>();
+        for (TestMethod method : methods) {
+            if (!method.isSuppressed()) {
+                unsuppressedMethods.add(method);
+            }
+        }
+        return unsuppressedMethods;
+    }
 
-	public List<TestMethod> getSuppressedMethods() {
-		List<TestMethod> suppressedMethods = new ArrayList<TestMethod>();
-		for (TestMethod method : methods) {
-			if (method.isSuppressed()) {
-				suppressedMethods.add(method);
-			}
-		}
-		return suppressedMethods;
-	}
+    public List<TestMethod> getSuppressedMethods() {
+        List<TestMethod> suppressedMethods = new ArrayList<TestMethod>();
+        for (TestMethod method : methods) {
+            if (method.isSuppressed()) {
+                suppressedMethods.add(method);
+            }
+        }
+        return suppressedMethods;
+    }
 
-	public TestMethod getMethod(String methodName) {
-		for (TestMethod method : methods) {
-			if (method.getName().equals(methodName)) {
-				return method;
-			}
-		}
-		return null;
-	}
+    public TestMethod getMethod(String methodName) {
+        for (TestMethod method : methods) {
+            if (method.getName().equals(methodName)) {
+                return method;
+            }
+        }
+        return null;
+    }
 }

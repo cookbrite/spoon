@@ -29,9 +29,9 @@ public class TestClassFilter {
     }
 
     public List<TestClass> anyUserFilter(List<TestClass> testClassesFromDexFile) {
-		if (filterPattern == null) {
+        if (filterPattern == null) {
             return testClassesFromDexFile;
-		}
+        }
 
         Set<TestClass> filteredIn = new HashSet<TestClass>();
         StringBuilder missingButSpecified = new StringBuilder();
@@ -57,5 +57,5 @@ public class TestClassFilter {
                     "Filters specified but did not match any classes: " + missingButSpecified);
         }
         return new ArrayList<TestClass>(filteredIn);
-	}
+    }
 }

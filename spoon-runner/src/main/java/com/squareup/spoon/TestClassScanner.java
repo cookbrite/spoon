@@ -42,15 +42,15 @@ public class TestClassScanner {
     private final File instrumentationApkFile;
     private File outputFolder;
 
-	public TestClassScanner(File instrumentationApkFile, File outputFolder) {
-		this.instrumentationApkFile = instrumentationApkFile;
+    public TestClassScanner(File instrumentationApkFile, File outputFolder) {
+        this.instrumentationApkFile = instrumentationApkFile;
         this.outputFolder = outputFolder;
-	}
+    }
 
-	public List<TestClass> scanForTestClasses() {
-		getDexClassesFromApk(instrumentationApkFile, outputFolder);
-		return getTestClassesFromDexFile(outputFolder);
-	}
+    public List<TestClass> scanForTestClasses() {
+        getDexClassesFromApk(instrumentationApkFile, outputFolder);
+        return getTestClassesFromDexFile(outputFolder);
+    }
 
     private static void getDexClassesFromApk(File apkFile, File outputFolder) {
         ZipFile zip = null;
@@ -61,7 +61,7 @@ public class TestClassScanner {
 
             int index = 1;
             String currentDex;
-            while(true) {
+            while (true) {
                 currentDex = CLASSES_PREFIX + (index > 1 ? index : "") + DEX_EXTENSION;
                 ZipEntry classesDex = zip.getEntry(currentDex);
                 if (classesDex != null) {
@@ -123,50 +123,54 @@ public class TestClassScanner {
             return;
         }
         List<ClassDataItem.EncodedMethod> methods = classData.getVirtualMethods();
-		for (ClassDataItem.EncodedMethod method : methods) {
-			String methodName = method.method.getMethodName().getStringValue();
-			if (methodName.startsWith(TEST)) {
-				testClass.addMethod(methodName);
-			}
-		}
-	}
+        for (ClassDataItem.EncodedMethod method : methods) {
+            String methodName = method.method.getMethodName().getStringValue();
+            if (methodName.startsWith(TEST)) {
+                testClass.addMethod(methodName);
+            }
+        }
+    }
 
-	/**
-	 * For the annotations known about by the class, find those relating to its methods, and walk them.
-	 *
-	 * @param classDefItem
-	 * @param visitors
-	 */
-	private static void visitMethodAnnotations(ClassDefItem classDefItem, DexMethodAnnotationVisitor... visitors) {
-		AnnotationDirectoryItem annotations = classDefItem.getAnnotations();
-		List<AnnotationDirectoryItem.MethodAnnotation> methodAnnotations = annotations == null ? null : annotations
-				.getMethodAnnotations();
-		if (methodAnnotations != null) {
-			for (AnnotationDirectoryItem.MethodAnnotation methodAnnotation : methodAnnotations) {
-				String methodName = methodAnnotation.method.getMethodName().getStringValue();
-				AnnotationItem[] set = methodAnnotation.annotationSet.getAnnotations();
-				for (AnnotationItem annotationItem : set) {
-					AnnotationEncodedSubValue encodedAnnotation = annotationItem.getEncodedAnnotation();
-					String typeName = encodedAnnotation.annotationType.getTypeDescriptor();
-					for (DexMethodAnnotationVisitor visitor : visitors) {
-						visitor.visitAnnotation(typeName, methodName);
-					}
-				}
-			}
-		}
-	}
+    /**
+     * For the annotations known about by the class, find those relating to its methods,
+     * and walk them.
+     *
+     * @param classDefItem
+     * @param visitors
+     */
+    private static void visitMethodAnnotations(ClassDefItem classDefItem,
+                                               DexMethodAnnotationVisitor... visitors) {
+        AnnotationDirectoryItem annotations = classDefItem.getAnnotations();
+        List<AnnotationDirectoryItem.MethodAnnotation> methodAnnotations
+                = annotations == null ? null : annotations.getMethodAnnotations();
+        if (methodAnnotations != null) {
+            for (AnnotationDirectoryItem.MethodAnnotation methodAnnotation : methodAnnotations) {
+                String methodName = methodAnnotation.method.getMethodName().getStringValue();
+                AnnotationItem[] set = methodAnnotation.annotationSet.getAnnotations();
+                for (AnnotationItem annotationItem : set) {
+                    AnnotationEncodedSubValue encodedAnnotation
+                            = annotationItem.getEncodedAnnotation();
+                    String typeName = encodedAnnotation.annotationType.getTypeDescriptor();
+                    for (DexMethodAnnotationVisitor visitor : visitors) {
+                        visitor.visitAnnotation(typeName, methodName);
+                    }
+                }
+            }
+        }
+    }
 
-	private static TestClass getTestClass(String typeDescriptor) {
-		final String testClassName = typeDescriptor.substring(1, typeDescriptor.length() - 1).replace('/', '.');
-		return new TestClass(testClassName);
-	}
+    private static TestClass getTestClass(String typeDescriptor) {
+        final String testClassName = typeDescriptor.substring(1, typeDescriptor.length() - 1)
+                .replace('/', '.');
+        return new TestClass(testClassName);
+    }
 
-	private static void closeZipQuietly(ZipFile zip) {
-		try {
-			if (zip != null) {
-				zip.close();
-			}
-		} catch (IOException e) {
-		}
-	}
+    private static void closeZipQuietly(ZipFile zip) {
+        try {
+            if (zip != null) {
+                zip.close();
+            }
+        } catch (IOException e) {
+        }
+    }
 }

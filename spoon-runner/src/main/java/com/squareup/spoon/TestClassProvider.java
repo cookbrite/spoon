@@ -20,32 +20,33 @@ import java.util.List;
  * Hands the next class to run to each given device.
  */
 class TestClassProvider {
-	private final List<TestClass> testClasses;
+    private final List<TestClass> testClasses;
 
-	public TestClassProvider(List<TestClass> testClasses) {
-		this.testClasses = new ArrayList<TestClass>(testClasses);
-	}
+    public TestClassProvider(List<TestClass> testClasses) {
+        this.testClasses = new ArrayList<TestClass>(testClasses);
+    }
 
-	/**
-	 * How many tests to run in total
-	 *
-	 * @return
-	 */
-	public int size() {
-		return testClasses.size();
-	}
+    /**
+     * How many tests to run in total
+     *
+     * @return
+     */
+    public int size() {
+        return testClasses.size();
+    }
 
-	/**
-	 * Returns the next class name available for running.
-	 *
-	 * The serial number isn't used yet, but may allow other pool members to pick up classes pending on (possibly) wedged devices.
-	 *
-	 * @return
-	 */
-	public synchronized TestClass getNextTest() {
-		if (!testClasses.isEmpty()) {
-			return testClasses.remove(0);
-		}
-		return null;
-	}
+    /**
+     * Returns the next class name available for running.
+     * <p/>
+     * The serial number isn't used yet, but may allow other pool members to pick up classes
+     * pending on (possibly) wedged devices.
+     *
+     * @return
+     */
+    public synchronized TestClass getNextTest() {
+        if (!testClasses.isEmpty()) {
+            return testClasses.remove(0);
+        }
+        return null;
+    }
 }
