@@ -190,7 +190,7 @@ public final class SpoonDeviceRunner {
       RemoteAndroidTestRunner runner = new RemoteAndroidTestRunner(testPackage, testRunner, device);
       runner.setMaxtimeToOutputResponse(adbTimeout);
       if (hasSubset) {
-        runner.setClassNames(instrumentationInfo.getAllTestClassNames());
+          setRunnerClass(runner);
       } else if (!Strings.isNullOrEmpty(className)) {
         if (Strings.isNullOrEmpty(methodName)) {
           runner.setClassName(className);
@@ -287,6 +287,20 @@ public final class SpoonDeviceRunner {
 
     return result.build();
   }
+
+    private void setRunnerClass(RemoteAndroidTestRunner runner) {
+//        int maxNum = instrumentationInfo.getAllTestClasses().size();
+//        if (instrumentationInfo.getAllTestClasses().size() > maxNum) {
+//            String[] cz = new String[maxNum];
+//            for (int i = 0; i < maxNum; i++) {
+//                TestClass t = instrumentationInfo.getAllTestClasses().get(i);
+//                cz[i] = t.getClassName();
+//            }
+//            runner.setClassNames(cz);
+//        } else {
+            runner.setClassNames(instrumentationInfo.getAllTestClassNames());
+//        }
+    }
 
   /////////////////////////////////////////////////////////////////////////////
   ////  Secondary Per-Device Process  /////////////////////////////////////////

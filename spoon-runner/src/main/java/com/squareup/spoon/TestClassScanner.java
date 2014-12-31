@@ -35,7 +35,8 @@ import static org.apache.commons.io.IOUtils.closeQuietly;
 import static org.apache.commons.io.IOUtils.copyLarge;
 
 public class TestClassScanner {
-    private static final Pattern TEST_CLASS_PATTERN = Pattern.compile("^((?!Abstract).)*Test;$");
+    private static final Pattern TEST_CLASS_PATTERN = Pattern
+            .compile("^((?!Abstract|Base).)*Test;$");
     private static final String TEST = "test";
     public static final String CLASSES_PREFIX = "classes";
     public static final String DEX_EXTENSION = ".dex";

@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -75,19 +76,22 @@ final class SpoonInstrumentationInfo {
 
   /** Parse key information from an instrumentation APK's manifest. */
   static SpoonInstrumentationInfo parseFromFile(File apkTestFile, File output) {
-    return parseFromFile(apkTestFile, output, 1, 1);
+    return parseFromFile(apkTestFile, output, 1, 1, null);
   }
 
   static SpoonInstrumentationInfo parseFromFile(File apkTestFile, File output,
-                                                int totalNodes, int currentNode) {
+                                                int totalNodes, int currentNode,
+                                                String filterPatterns) {
     InputStream is = null;
     try {
       List<TestClass> testClasses = null;
-      if (totalNodes > 1) {
+      if (totalNodes > 1 || !StringUtils.isEmpty(filterPatterns)) {
         SpoonLogger.logInfo("loading test classes from %s", apkTestFile.toPath());
 
         testClasses = (new TestClassScanner(apkTestFile, output))
           .scanForTestClasses();
+        TestClassFilter filter = new TestClassFilter(filterPatterns);
+        testClasses = filter.anyUserFilter(testClasses);
         SpoonLogger.logInfo("loaded %d classes", testClasses.size());
         testClasses = filterByNodeIndex(testClasses, totalNodes, currentNode);
         SpoonLogger.logInfo("Filtered down to %d classes", testClasses.size());

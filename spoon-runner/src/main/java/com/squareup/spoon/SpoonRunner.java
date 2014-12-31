@@ -48,12 +48,13 @@ public final class SpoonRunner {
   private final boolean failIfNoDeviceConnected;
   private final int totalNodes;
   private final int currentNodeIndex;
+  private final String filterPatterns;
 
   private SpoonRunner(String title, File androidSdk, File applicationApk, File instrumentationApk,
       File output, boolean debug, boolean noAnimations, int adbTimeout, Set<String> serials,
       String classpath, String className, String methodName,
       IRemoteAndroidTestRunner.TestSize testSize, boolean failIfNoDeviceConnected,
-      int totalNodes, int currentNodeIndex) {
+      int totalNodes, int currentNodeIndex, String filterPtrn) {
     this.title = title;
     this.androidSdk = androidSdk;
     this.applicationApk = applicationApk;
@@ -70,6 +71,7 @@ public final class SpoonRunner {
     this.failIfNoDeviceConnected = failIfNoDeviceConnected;
     this.totalNodes = totalNodes;
     this.currentNodeIndex = currentNodeIndex - 1; // index is 0 based, but use 1 for cmd line
+    this.filterPatterns = filterPtrn;
     }
 
   /**
@@ -117,7 +119,8 @@ public final class SpoonRunner {
     output.mkdirs();
 
     final SpoonInstrumentationInfo testInfo = totalNodes > 1
-            ? parseFromFile(instrumentationApk, output, totalNodes, currentNodeIndex)
+            ? parseFromFile(instrumentationApk, output, totalNodes,
+                currentNodeIndex, filterPatterns)
             : parseFromFile(instrumentationApk, output);
 
     logDebug(debug, "Application: %s from %s", testInfo.getApplicationPackage(),
@@ -227,6 +230,7 @@ public final class SpoonRunner {
     private boolean failIfNoDeviceConnected;
     private int totalNodez;
     private int curIndex;
+    private String filterPtrn;
 
     /** Identifying title for this execution. */
     public Builder setTitle(String title) {
@@ -344,6 +348,11 @@ public final class SpoonRunner {
       return this;
     }
 
+    public Builder setFilterPatterns(String ptrn) {
+      this.filterPtrn = ptrn;
+      return this;
+    }
+
     public SpoonRunner build() {
       checkNotNull(androidSdk, "SDK is required.");
       checkArgument(androidSdk.exists(), "SDK path does not exist.");
@@ -364,7 +373,7 @@ public final class SpoonRunner {
 
       return new SpoonRunner(title, androidSdk, applicationApk, instrumentationApk, output, debug,
           noAnimations, adbTimeout, serials, classpath, className, methodName, testSize,
-          failIfNoDeviceConnected, totalNodez, curIndex);
+          failIfNoDeviceConnected, totalNodez, curIndex, filterPtrn);
     }
   }
 
@@ -418,12 +427,15 @@ public final class SpoonRunner {
     @Parameter(names = { "-h", "--help" }, description = "Command help", help = true, hidden = true)
     public boolean help;
 
-    @Parameter(names = { "--node-index" },
-        description = "Node Index of current runner, default = 1")
+    @Parameter(names = { "--node-index" }, description = "Node Index of current runner")
     public int nodeIndex = 1;
 
-    @Parameter(names = {"--total-nodes" }, description = "Total number of nodes, default = 1")
+    @Parameter(names = {"--total-nodes" }, description = "Total number of nodes")
     public int totalNodes = 1;
+
+    @Parameter(names = { "--filter-pattern" },
+            description = "Test class name filters, comma separated, Java regex")
+    public String filterPatterns;
   }
 
   private static File cleanFile(String path) {
@@ -485,6 +497,7 @@ public final class SpoonRunner {
         .useAllAttachedDevices()
         .setTotalNodes(parsedArgs.totalNodes)
         .setCurrentNodeIndex(parsedArgs.nodeIndex)
+        .setFilterPatterns(parsedArgs.filterPatterns)
         .build();
 
     if (!spoonRunner.run() && parsedArgs.failOnFailure) {
