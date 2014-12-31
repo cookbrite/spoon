@@ -69,7 +69,7 @@ public final class SpoonRunner {
     this.serials = ImmutableSet.copyOf(serials);
     this.failIfNoDeviceConnected = failIfNoDeviceConnected;
     this.totalNodes = totalNodes;
-    this.currentNodeIndex = currentNodeIndex;
+    this.currentNodeIndex = currentNodeIndex - 1; // index is 0 based, but use 1 for cmd line
     }
 
   /**
@@ -114,7 +114,12 @@ public final class SpoonRunner {
       throw new RuntimeException("Unable to clean output directory: " + output, e);
     }
 
-    final SpoonInstrumentationInfo testInfo = parseFromFile(instrumentationApk);
+    output.mkdirs();
+
+    final SpoonInstrumentationInfo testInfo = totalNodes > 1
+            ? parseFromFile(instrumentationApk, output, totalNodes, currentNodeIndex)
+            : parseFromFile(instrumentationApk, output);
+
     logDebug(debug, "Application: %s from %s", testInfo.getApplicationPackage(),
         applicationApk.getAbsolutePath());
     logDebug(debug, "Instrumentation: %s from %s", testInfo.getInstrumentationPackage(),

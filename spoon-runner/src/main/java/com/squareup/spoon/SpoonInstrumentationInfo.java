@@ -4,6 +4,8 @@ import com.squareup.spoon.axmlparser.AXMLParser;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import org.apache.commons.io.IOUtils;
@@ -17,11 +19,18 @@ final class SpoonInstrumentationInfo {
   private final String instrumentationPackage;
   private final String testRunnerClass;
 
+  private int totalNodes = 1;
+  private int currentNode = 1;
+  private List<TestClass> totalClasses = null;
+
   SpoonInstrumentationInfo(String applicationPackage, String instrumentationPackage,
-      String testRunnerClass) {
+      String testRunnerClass, List<TestClass> tc, int tn, int cn) {
     this.applicationPackage = applicationPackage;
     this.instrumentationPackage = instrumentationPackage;
     this.testRunnerClass = testRunnerClass;
+    this.totalClasses = tc;
+    this.totalNodes = tn;
+    this.currentNode = cn;
   }
 
   String getApplicationPackage() {
@@ -36,14 +45,56 @@ final class SpoonInstrumentationInfo {
     return testRunnerClass;
   }
 
+  List<TestClass> getAllTestClasses() {
+    return totalClasses;
+  }
+
+  String[] getAllTestClassNames() {
+    if (totalClasses != null && totalClasses.size() > 0) {
+      String[] ret = new String[totalClasses.size()];
+      for (int i = 0; i < totalClasses.size(); i++) {
+        TestClass t = totalClasses.get(i);
+        ret[i] = t.getClassName();
+      }
+      return ret;
+    }
+    return null;
+  }
+
+  int getTotalNodes() {
+    return totalNodes;
+  }
+
+  int getCurrentNode() {
+    return currentNode;
+  }
+
   @Override public String toString() {
     return ToStringBuilder.reflectionToString(this);
   }
 
   /** Parse key information from an instrumentation APK's manifest. */
-  static SpoonInstrumentationInfo parseFromFile(File apkTestFile) {
+  static SpoonInstrumentationInfo parseFromFile(File apkTestFile, File output) {
+    return parseFromFile(apkTestFile, output, 1, 1);
+  }
+
+  static SpoonInstrumentationInfo parseFromFile(File apkTestFile, File output,
+                                                int totalNodes, int currentNode) {
     InputStream is = null;
     try {
+      List<TestClass> testClasses = null;
+      if (totalNodes > 1) {
+        SpoonLogger.logInfo("loading test classes from %s", apkTestFile.toPath());
+
+        testClasses = (new TestClassScanner(apkTestFile, output))
+          .scanForTestClasses();
+        SpoonLogger.logInfo("loaded %d classes", testClasses.size());
+        testClasses = filterByNodeIndex(testClasses, totalNodes, currentNode);
+        SpoonLogger.logInfo("Filtered down to %d classes", testClasses.size());
+      } else {
+          SpoonLogger.logInfo("Not filtering test classes");
+      }
+
       ZipFile zip = new ZipFile(apkTestFile);
       ZipEntry entry = zip.getEntry("AndroidManifest.xml");
       is = zip.getInputStream(entry);
@@ -85,11 +136,22 @@ final class SpoonInstrumentationInfo {
         testRunnerClass = testPackage + "." + testRunnerClass;
       }
 
-      return new SpoonInstrumentationInfo(appPackage, testPackage, testRunnerClass);
+      return new SpoonInstrumentationInfo(appPackage, testPackage, testRunnerClass, testClasses,
+              totalNodes, currentNode);
     } catch (IOException e) {
       throw new RuntimeException("Unable to parse test app AndroidManifest.xml.", e);
     } finally {
       IOUtils.closeQuietly(is);
     }
+  }
+
+  static List<TestClass> filterByNodeIndex(List<TestClass> list, int total, int cur) {
+    List<TestClass> ret = new ArrayList<TestClass>(list.size());
+    for (int i = 0; i < list.size(); i++) {
+      if (i % total == cur) {
+        ret.add(list.get(i));
+      }
+    }
+    return ret;
   }
 }

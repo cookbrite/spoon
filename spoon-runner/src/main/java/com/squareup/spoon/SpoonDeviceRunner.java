@@ -141,6 +141,7 @@ public final class SpoonDeviceRunner {
     String appPackage = instrumentationInfo.getApplicationPackage();
     String testPackage = instrumentationInfo.getInstrumentationPackage();
     String testRunner = instrumentationInfo.getTestRunnerClass();
+    boolean hasSubset = (instrumentationInfo.getTotalNodes() > 1);
     TestIdentifierAdapter testIdentifierAdapter = TestIdentifierAdapter.fromTestRunner(testRunner);
 
     logDebug(debug, "InstrumentationInfo: [%s]", instrumentationInfo);
@@ -188,7 +189,9 @@ public final class SpoonDeviceRunner {
       logDebug(debug, "About to actually run tests for [%s]", serial);
       RemoteAndroidTestRunner runner = new RemoteAndroidTestRunner(testPackage, testRunner, device);
       runner.setMaxtimeToOutputResponse(adbTimeout);
-      if (!Strings.isNullOrEmpty(className)) {
+      if (hasSubset) {
+        runner.setClassNames(instrumentationInfo.getAllTestClassNames());
+      } else if (!Strings.isNullOrEmpty(className)) {
         if (Strings.isNullOrEmpty(methodName)) {
           runner.setClassName(className);
         } else {
