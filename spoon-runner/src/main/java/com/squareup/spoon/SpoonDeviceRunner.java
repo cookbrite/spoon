@@ -1,9 +1,12 @@
 package com.squareup.spoon;
 
+import com.android.ddmlib.AdbCommandRejectedException;
 import com.android.ddmlib.AndroidDebugBridge;
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.InstallException;
+import com.android.ddmlib.ShellCommandUnresponsiveException;
 import com.android.ddmlib.SyncService;
+import com.android.ddmlib.TimeoutException;
 import com.android.ddmlib.logcat.LogCatMessage;
 import com.android.ddmlib.testrunner.RemoteAndroidTestRunner;
 import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner;
@@ -139,10 +142,6 @@ public final class SpoonDeviceRunner {
   /** Execute instrumentation on the target device and return a result summary. */
   public DeviceResult run(AndroidDebugBridge adb) {
     String appPackage = instrumentationInfo.getApplicationPackage();
-    String testPackage = instrumentationInfo.getInstrumentationPackage();
-    String testRunner = instrumentationInfo.getTestRunnerClass();
-    boolean hasSubset = (instrumentationInfo.getTotalNodes() > 1);
-    TestIdentifierAdapter testIdentifierAdapter = TestIdentifierAdapter.fromTestRunner(testRunner);
 
     logDebug(debug, "InstrumentationInfo: [%s]", instrumentationInfo);
 
@@ -185,29 +184,8 @@ public final class SpoonDeviceRunner {
     SpoonDeviceLogger deviceLogger = new SpoonDeviceLogger(device);
 
     // Run all the tests! o/
-    try {
-      logDebug(debug, "About to actually run tests for [%s]", serial);
-      RemoteAndroidTestRunner runner = new RemoteAndroidTestRunner(testPackage, testRunner, device);
-      runner.setMaxtimeToOutputResponse(adbTimeout);
-      if (hasSubset) {
-          setRunnerClass(runner);
-      } else if (!Strings.isNullOrEmpty(className)) {
-        if (Strings.isNullOrEmpty(methodName)) {
-          runner.setClassName(className);
-        } else {
-          runner.setMethodName(className, methodName);
-        }
-      }
-      if (testSize != null) {
-        runner.setTestSize(testSize);
-      }
-      runner.run(
-          new SpoonTestRunListener(result, debug, testIdentifierAdapter),
-          new XmlTestRunListener(junitReport)
-      );
-    } catch (Exception e) {
-      result.addException(e);
-    }
+    runTestsOnRunner(result, device);
+logDebug(debug, "done running tests");
 
     // Grab all the parsed logs and map them to individual tests.
     Map<DeviceTest, List<LogCatMessage>> logs = deviceLogger.getParsedLogs();
@@ -288,21 +266,108 @@ public final class SpoonDeviceRunner {
     return result.build();
   }
 
-    private void setRunnerClass(RemoteAndroidTestRunner runner) {
-//        int maxNum = instrumentationInfo.getAllTestClasses().size();
-//        if (instrumentationInfo.getAllTestClasses().size() > maxNum) {
-//            String[] cz = new String[maxNum];
-//            for (int i = 0; i < maxNum; i++) {
-//                TestClass t = instrumentationInfo.getAllTestClasses().get(i);
-//                cz[i] = t.getClassName();
-//            }
-//            runner.setClassNames(cz);
-//        } else {
-            runner.setClassNames(instrumentationInfo.getAllTestClassNames());
-//        }
+  private void runTestsOnRunner(DeviceResult.Builder result, IDevice device) {
+    String testPackage = instrumentationInfo.getInstrumentationPackage();
+    String testRunner = instrumentationInfo.getTestRunnerClass();
+    boolean hasSubset = (instrumentationInfo.getTotalNodes() > 1);
+    TestIdentifierAdapter testIdentifierAdapter = TestIdentifierAdapter.fromTestRunner(testRunner);
+
+    try {
+      logDebug(debug, "About to actually run tests for [%s]", serial);
+      RemoteAndroidTestRunner runner = new RemoteAndroidTestRunner(testPackage, testRunner, device);
+      runner.setMaxtimeToOutputResponse(adbTimeout);
+      TestClassProvider testsProvider = null;
+      if (hasSubset) {
+logDebug(debug, "has subset, use test provider");
+          testsProvider = new TestClassProvider(instrumentationInfo.getAllTestClasses());
+      } else if (!Strings.isNullOrEmpty(className)) {
+        if (Strings.isNullOrEmpty(methodName)) {
+          runner.setClassName(className);
+        } else {
+          runner.setMethodName(className, methodName);
+        }
+      }
+      if (testSize != null) {
+        runner.setTestSize(testSize);
+      }
+
+      if (testsProvider != null) {
+          runTestInBatches(testPackage, testRunner, device,
+                  testIdentifierAdapter, result, runner, testsProvider);
+logDebug(debug, "run test in batches returned");
+      } else {
+        runner.run(
+          new SpoonTestRunListener(result, debug, testIdentifierAdapter),
+          new XmlTestRunListener(junitReport)
+        );
+      }
+    } catch (Exception e) {
+logDebug(debug, "caught exception %s", e);
+        e.printStackTrace();
+      result.addException(e);
+    }
+  }
+
+  private void runTestInBatches(
+          String testPackage,
+    String testRunner,
+    IDevice device,
+          TestIdentifierAdapter testIdentifierAdapter,
+                                DeviceResult.Builder result, RemoteAndroidTestRunner rn,
+                                TestClassProvider testsProvider)
+          throws TimeoutException, AdbCommandRejectedException,
+          ShellCommandUnresponsiveException, IOException {
+      int testCount = 5;
+    List<TestClass> cls = testsProvider.getNextTests(testCount);
+
+    while (cls.size() > 0) {
+      RemoteAndroidTestRunner runner = new RemoteAndroidTestRunner(testPackage, testRunner, device);
+
+        logDebug(debug, "loading next 5 tests");
+        runner.setClassNames(TestClassProvider.getTestClassNames(testsProvider
+                .getNextTests(testCount)));
+        logDebug(debug, "Running tests");
+
+        runner.run(
+                new SpoonTestRunListener(result, debug, testIdentifierAdapter),
+                new XmlTestRunListener(junitReport)
+        );
+
+        cls = testsProvider.getNextTests(testCount);
     }
 
-  /////////////////////////////////////////////////////////////////////////////
+//    do {
+//      logDebug(debug, "loading next 5 tests");
+//      rn.setClassNames(
+//              TestClassProvider.getTestClassNames(
+//                      testsProvider.getNextTests(5)));
+//      logDebug(debug, "Running tests");
+//
+//      rn.run(
+//              new SpoonTestRunListener(result, debug, testIdentifierAdapter),
+//              new XmlTestRunListener(junitReport)
+//      );
+//
+//        rn.setClassNames(
+//                TestClassProvider.getTestClassNames(
+//                        testsProvider.getNextTests(5)));
+//        rn.run(
+//                new SpoonTestRunListener(result, debug, testIdentifierAdapter),
+//                new XmlTestRunListener(junitReport)
+//        );
+//
+//        rn.setClassNames(
+//                TestClassProvider.getTestClassNames(
+//                        testsProvider.getNextTests(5)));
+//        rn.run(
+//                new SpoonTestRunListener(result, debug, testIdentifierAdapter),
+//                new XmlTestRunListener(junitReport)
+//        );
+//
+//    } while (testsProvider.size() > 0);
+  }
+
+    /////////////////////////////////////////////////////////////////////////////
   ////  Secondary Per-Device Process  /////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////
 

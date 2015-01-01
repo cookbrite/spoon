@@ -49,4 +49,32 @@ class TestClassProvider {
         }
         return null;
     }
+
+    /**
+     * return next class names available for running, in @count batches
+     * @param count
+     * @return null if no more tests available
+     */
+    public synchronized List<TestClass> getNextTests(int count) {
+        List<TestClass> ret = new ArrayList<TestClass>(count);
+        int i = 0;
+        while (i < count && !testClasses.isEmpty()) {
+            ret.add(testClasses.remove(0));
+            i++;
+        }
+        return ret.size() > 0 ? ret : null;
+    }
+
+    public static String[] getTestClassNames(List<TestClass> in) {
+        if (in == null || in.size() == 0) {
+            return null;
+        }
+
+        String[] ret = new String[in.size()];
+        for (int i = 0; i < in.size(); i++) {
+            TestClass t = in.get(i);
+            ret[i] = t.getClassName();
+        }
+        return ret;
+    }
 }
