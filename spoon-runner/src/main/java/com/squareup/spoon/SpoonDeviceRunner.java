@@ -324,8 +324,12 @@ logDebug(debug, "caught exception %s", e);
       RemoteAndroidTestRunner runner = new RemoteAndroidTestRunner(testPackage, testRunner, device);
 
         logDebug(debug, "loading next 5 tests");
-        runner.setClassNames(TestClassProvider.getTestClassNames(testsProvider
-                .getNextTests(testCount)));
+        String[] testClassNames = TestClassProvider.getTestClassNames(testsProvider
+                .getNextTests(testCount));
+        if (testClassNames == null) {
+            break;
+        }
+        runner.setClassNames(testClassNames);
         logDebug(debug, "Running tests");
 
         runner.run(
