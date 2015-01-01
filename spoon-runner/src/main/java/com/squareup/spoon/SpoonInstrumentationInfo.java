@@ -5,6 +5,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
@@ -90,6 +91,7 @@ final class SpoonInstrumentationInfo {
 
         testClasses = (new TestClassScanner(apkTestFile, output))
           .scanForTestClasses();
+        Collections.sort(testClasses);
         TestClassFilter filter = new TestClassFilter(filterPatterns);
         testClasses = filter.anyUserFilter(testClasses);
         SpoonLogger.logInfo("loaded %d classes", testClasses.size());

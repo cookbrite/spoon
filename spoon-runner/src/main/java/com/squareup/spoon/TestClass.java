@@ -19,7 +19,7 @@ import java.util.List;
 /**
  * Holds test class and method information
  */
-public class TestClass {
+public class TestClass implements Comparable<TestClass> {
     private final String testClassName;
     private final List<TestMethod> methods = new ArrayList<TestMethod>();
 
@@ -62,5 +62,14 @@ public class TestClass {
             }
         }
         return null;
+    }
+
+    @Override
+    public int compareTo(TestClass testClass) {
+        if (testClass == null || testClass.getClassName() == null) {
+            return -1;
+        }
+
+        return testClassName.compareTo(testClass.testClassName);
     }
 }
