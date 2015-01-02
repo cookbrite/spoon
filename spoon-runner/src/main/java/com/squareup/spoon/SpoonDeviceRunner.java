@@ -319,7 +319,7 @@ logDebug(debug, "caught exception %s", e);
       int testCount = 5;
     List<TestClass> cls = testsProvider.getNextTests(testCount);
 
-    while (cls.size() > 0) {
+    while (cls != null && cls.size() > 0) {
       RemoteAndroidTestRunner runner = new RemoteAndroidTestRunner(testPackage, testRunner, device);
       logDebug(debug, "loading next 5 tests");
       String[] testClassNames = TestClassProvider.getTestClassNames(cls);
