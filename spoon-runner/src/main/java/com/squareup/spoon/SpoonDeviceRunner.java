@@ -58,6 +58,7 @@ public final class SpoonDeviceRunner {
   private final IRemoteAndroidTestRunner.TestSize testSize;
   private final File work;
   private final File junitReport;
+  private final File junitReportDir;
   private final File imageDir;
   private final String classpath;
   private final SpoonInstrumentationInfo instrumentationInfo;
@@ -98,6 +99,7 @@ public final class SpoonDeviceRunner {
     serial = SpoonUtils.sanitizeSerial(serial);
     this.work = FileUtils.getFile(output, TEMP_DIR, serial);
     this.junitReport = FileUtils.getFile(output, JUNIT_DIR, serial + ".xml");
+    this.junitReportDir = new File(output, JUNIT_DIR);
     this.imageDir = FileUtils.getFile(output, IMAGE_DIR, serial);
   }
 
@@ -318,7 +320,7 @@ logDebug(debug, "caught exception %s", e);
           ShellCommandUnresponsiveException, IOException {
       int testCount = 5;
     List<TestClass> cls = testsProvider.getNextTests(testCount);
-
+    int run = 1;
     while (cls != null && cls.size() > 0) {
       RemoteAndroidTestRunner runner = new RemoteAndroidTestRunner(testPackage, testRunner, device);
       logDebug(debug, "loading next 5 tests");
@@ -328,11 +330,15 @@ logDebug(debug, "caught exception %s", e);
       }
       runner.setClassNames(testClassNames);
       logDebug(debug, "Running tests");
+        File f = FileUtils.getFile(junitReportDir, serial
+                + "_" + String.valueOf(run) + ".xml");
+logDebug(debug, "logging JUnit to %s", f.getPath());
       runner.run(
             new SpoonTestRunListener(result, debug, testIdentifierAdapter),
-            new XmlTestRunListener(junitReport)
+            new XmlTestRunListener(f)
       );
       cls = testsProvider.getNextTests(testCount);
+      ++run;
     }
 
 //    do {
