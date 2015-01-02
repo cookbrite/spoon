@@ -293,7 +293,7 @@ logDebug(debug, "has subset, use test provider");
 
       if (testsProvider != null) {
           runTestInBatches(testPackage, testRunner, device,
-                  testIdentifierAdapter, result, runner, testsProvider);
+                  testIdentifierAdapter, result, testsProvider);
 logDebug(debug, "run test in batches returned");
       } else {
         runner.run(
@@ -308,12 +308,11 @@ logDebug(debug, "caught exception %s", e);
     }
   }
 
-  private void runTestInBatches(
-          String testPackage,
-    String testRunner,
-    IDevice device,
-          TestIdentifierAdapter testIdentifierAdapter,
-                                DeviceResult.Builder result, RemoteAndroidTestRunner rn,
+  private void runTestInBatches(String testPackage,
+                                String testRunner,
+                                IDevice device,
+                                TestIdentifierAdapter testIdentifierAdapter,
+                                DeviceResult.Builder result,
                                 TestClassProvider testsProvider)
           throws TimeoutException, AdbCommandRejectedException,
           ShellCommandUnresponsiveException, IOException {
@@ -322,22 +321,18 @@ logDebug(debug, "caught exception %s", e);
 
     while (cls.size() > 0) {
       RemoteAndroidTestRunner runner = new RemoteAndroidTestRunner(testPackage, testRunner, device);
-
-        logDebug(debug, "loading next 5 tests");
-        String[] testClassNames = TestClassProvider.getTestClassNames(testsProvider
-                .getNextTests(testCount));
-        if (testClassNames == null) {
-            break;
-        }
-        runner.setClassNames(testClassNames);
-        logDebug(debug, "Running tests");
-
-        runner.run(
-                new SpoonTestRunListener(result, debug, testIdentifierAdapter),
-                new XmlTestRunListener(junitReport)
-        );
-
-        cls = testsProvider.getNextTests(testCount);
+      logDebug(debug, "loading next 5 tests");
+      String[] testClassNames = TestClassProvider.getTestClassNames(cls);
+      if (testClassNames == null) {
+        break;
+      }
+      runner.setClassNames(testClassNames);
+      logDebug(debug, "Running tests");
+      runner.run(
+            new SpoonTestRunListener(result, debug, testIdentifierAdapter),
+            new XmlTestRunListener(junitReport)
+      );
+      cls = testsProvider.getNextTests(testCount);
     }
 
 //    do {
