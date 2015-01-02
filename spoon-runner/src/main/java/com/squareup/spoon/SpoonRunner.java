@@ -46,7 +46,7 @@ public final class SpoonRunner {
   private final String classpath;
   private final IRemoteAndroidTestRunner.TestSize testSize;
   private final boolean failIfNoDeviceConnected;
-  private final int totalNodes;
+  private final int nodeCount;
   private final int currentNodeIndex;
   private final String filterPatterns;
 
@@ -69,7 +69,7 @@ public final class SpoonRunner {
     this.testSize = testSize;
     this.serials = ImmutableSet.copyOf(serials);
     this.failIfNoDeviceConnected = failIfNoDeviceConnected;
-    this.totalNodes = totalNodes;
+    this.nodeCount = totalNodes;
     this.currentNodeIndex = currentNodeIndex - 1; // index is 0 based, but use 1 for cmd line
     this.filterPatterns = filterPtrn;
     }
@@ -118,8 +118,8 @@ public final class SpoonRunner {
 
     output.mkdirs();
 
-    final SpoonInstrumentationInfo testInfo = totalNodes > 1
-            ? parseFromFile(instrumentationApk, output, totalNodes,
+    final SpoonInstrumentationInfo testInfo = nodeCount > 1
+            ? parseFromFile(instrumentationApk, output, nodeCount,
                 currentNodeIndex, filterPatterns)
             : parseFromFile(instrumentationApk, output);
 
@@ -228,7 +228,7 @@ public final class SpoonRunner {
     private IRemoteAndroidTestRunner.TestSize testSize;
     private int adbTimeout;
     private boolean failIfNoDeviceConnected;
-    private int totalNodez;
+    private int nodeCount;
     private int curIndex;
     private String filterPtrn;
 
@@ -338,8 +338,8 @@ public final class SpoonRunner {
       return this;
     }
 
-    public Builder setTotalNodes(int total) {
-      this.totalNodez = total;
+    public Builder setNodeCount(int total) {
+      this.nodeCount = total;
       return this;
     }
 
@@ -365,15 +365,15 @@ public final class SpoonRunner {
             "Must specify class name if you're specifying a method name.");
       }
 
-      if (totalNodez > 1) {
-        checkArgument(curIndex > 0 && curIndex <= totalNodez,
+      if (nodeCount > 1) {
+        checkArgument(curIndex > 0 && curIndex <= nodeCount,
             "current node index cannot be less than 0 or greater than total %d",
              curIndex);
       }
 
       return new SpoonRunner(title, androidSdk, applicationApk, instrumentationApk, output, debug,
           noAnimations, adbTimeout, serials, classpath, className, methodName, testSize,
-          failIfNoDeviceConnected, totalNodez, curIndex, filterPtrn);
+          failIfNoDeviceConnected, nodeCount, curIndex, filterPtrn);
     }
   }
 
@@ -430,8 +430,8 @@ public final class SpoonRunner {
     @Parameter(names = { "--node-index" }, description = "Node Index of current runner")
     public int nodeIndex = 1;
 
-    @Parameter(names = {"--total-nodes" }, description = "Total number of nodes")
-    public int totalNodes = 1;
+    @Parameter(names = {"--node-count" }, description = "Total number of nodes")
+    public int nodeCount = 1;
 
     @Parameter(names = { "--filter-pattern" },
             description = "Test class name filters, comma separated, Java regex")
@@ -495,7 +495,7 @@ public final class SpoonRunner {
         .setClassName(parsedArgs.className)
         .setMethodName(parsedArgs.methodName)
         .useAllAttachedDevices()
-        .setTotalNodes(parsedArgs.totalNodes)
+        .setNodeCount(parsedArgs.nodeCount)
         .setCurrentNodeIndex(parsedArgs.nodeIndex)
         .setFilterPatterns(parsedArgs.filterPatterns)
         .build();
