@@ -17,6 +17,7 @@ import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.StringUtils;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -118,7 +119,8 @@ public final class SpoonRunner {
 
     output.mkdirs();
 
-    final SpoonInstrumentationInfo testInfo = nodeCount > 1
+    final SpoonInstrumentationInfo testInfo =
+            (nodeCount > 1 || !StringUtils.isEmpty(filterPatterns))
             ? parseFromFile(instrumentationApk, output, nodeCount,
                 currentNodeIndex, filterPatterns)
             : parseFromFile(instrumentationApk, output);

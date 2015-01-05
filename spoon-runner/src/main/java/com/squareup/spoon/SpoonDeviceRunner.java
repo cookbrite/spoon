@@ -271,7 +271,8 @@ logDebug(debug, "done running tests");
   private void runTestsOnRunner(DeviceResult.Builder result, IDevice device) {
     String testPackage = instrumentationInfo.getInstrumentationPackage();
     String testRunner = instrumentationInfo.getTestRunnerClass();
-    boolean hasSubset = (instrumentationInfo.getTotalNodes() > 1);
+    boolean hasSubset = (instrumentationInfo.getTotalNodes() > 1
+            || instrumentationInfo.getAllTestClasses() != null);
     TestIdentifierAdapter testIdentifierAdapter = TestIdentifierAdapter.fromTestRunner(testRunner);
 
     try {
@@ -280,8 +281,8 @@ logDebug(debug, "done running tests");
       runner.setMaxtimeToOutputResponse(adbTimeout);
       TestClassProvider testsProvider = null;
       if (hasSubset) {
-logDebug(debug, "has subset, use test provider");
-          testsProvider = new TestClassProvider(instrumentationInfo.getAllTestClasses());
+        logDebug(debug, "has subset, use test provider");
+        testsProvider = new TestClassProvider(instrumentationInfo.getAllTestClasses());
       } else if (!Strings.isNullOrEmpty(className)) {
         if (Strings.isNullOrEmpty(methodName)) {
           runner.setClassName(className);
@@ -294,9 +295,8 @@ logDebug(debug, "has subset, use test provider");
       }
 
       if (testsProvider != null) {
-          runTestInBatches(testPackage, testRunner, device,
-                  testIdentifierAdapter, result, testsProvider);
-logDebug(debug, "run test in batches returned");
+        runTestInBatches(testPackage, testRunner, device, testIdentifierAdapter, result,
+                testsProvider);
       } else {
         runner.run(
           new SpoonTestRunListener(result, debug, testIdentifierAdapter),
@@ -304,8 +304,8 @@ logDebug(debug, "run test in batches returned");
         );
       }
     } catch (Exception e) {
-logDebug(debug, "caught exception %s", e);
-        e.printStackTrace();
+      logDebug(debug, "caught exception %s", e);
+      e.printStackTrace();
       result.addException(e);
     }
   }
@@ -318,21 +318,22 @@ logDebug(debug, "caught exception %s", e);
                                 TestClassProvider testsProvider)
           throws TimeoutException, AdbCommandRejectedException,
           ShellCommandUnresponsiveException, IOException {
-      int testCount = 5;
+    int testCount = 5;
     List<TestClass> cls = testsProvider.getNextTests(testCount);
     int run = 1;
     while (cls != null && cls.size() > 0) {
       RemoteAndroidTestRunner runner = new RemoteAndroidTestRunner(testPackage, testRunner, device);
-      logDebug(debug, "loading next 5 tests");
+      logDebug(debug, "loading next %d tests", testCount);
       String[] testClassNames = TestClassProvider.getTestClassNames(cls);
       if (testClassNames == null) {
         break;
       }
       runner.setClassNames(testClassNames);
       logDebug(debug, "Running tests");
-        File f = FileUtils.getFile(junitReportDir, serial
+      // TODO does not work with genymotion, somehow filename is wrong and no output
+      File f = FileUtils.getFile(junitReportDir, serial
                 + "_" + String.valueOf(run) + ".xml");
-logDebug(debug, "logging JUnit to %s", f.getPath());
+      logDebug(debug, "logging JUnit to %s", f.getPath());
       runner.run(
             new SpoonTestRunListener(result, debug, testIdentifierAdapter),
             new XmlTestRunListener(f)
@@ -340,36 +341,6 @@ logDebug(debug, "logging JUnit to %s", f.getPath());
       cls = testsProvider.getNextTests(testCount);
       ++run;
     }
-
-//    do {
-//      logDebug(debug, "loading next 5 tests");
-//      rn.setClassNames(
-//              TestClassProvider.getTestClassNames(
-//                      testsProvider.getNextTests(5)));
-//      logDebug(debug, "Running tests");
-//
-//      rn.run(
-//              new SpoonTestRunListener(result, debug, testIdentifierAdapter),
-//              new XmlTestRunListener(junitReport)
-//      );
-//
-//        rn.setClassNames(
-//                TestClassProvider.getTestClassNames(
-//                        testsProvider.getNextTests(5)));
-//        rn.run(
-//                new SpoonTestRunListener(result, debug, testIdentifierAdapter),
-//                new XmlTestRunListener(junitReport)
-//        );
-//
-//        rn.setClassNames(
-//                TestClassProvider.getTestClassNames(
-//                        testsProvider.getNextTests(5)));
-//        rn.run(
-//                new SpoonTestRunListener(result, debug, testIdentifierAdapter),
-//                new XmlTestRunListener(junitReport)
-//        );
-//
-//    } while (testsProvider.size() > 0);
   }
 
     /////////////////////////////////////////////////////////////////////////////

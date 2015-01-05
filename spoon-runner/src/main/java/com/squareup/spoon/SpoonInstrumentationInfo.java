@@ -98,7 +98,7 @@ final class SpoonInstrumentationInfo {
         testClasses = filterByNodeIndex(testClasses, totalNodes, currentNode);
         SpoonLogger.logInfo("Filtered down to %d classes", testClasses.size());
       } else {
-          SpoonLogger.logInfo("Not filtering test classes");
+        SpoonLogger.logInfo("Not filtering test classes");
       }
 
       ZipFile zip = new ZipFile(apkTestFile);
