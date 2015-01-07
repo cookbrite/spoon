@@ -310,6 +310,7 @@ logDebug(debug, "done running tests");
     }
   }
 
+    // TODO add  comment why we need to run in batches
   private void runTestInBatches(String testPackage,
                                 String testRunner,
                                 IDevice device,

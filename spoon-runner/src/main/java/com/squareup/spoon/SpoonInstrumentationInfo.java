@@ -91,9 +91,9 @@ final class SpoonInstrumentationInfo {
 
         testClasses = (new TestClassScanner(apkTestFile, output))
           .scanForTestClasses();
-        Collections.sort(testClasses);
         TestClassFilter filter = new TestClassFilter(filterPatterns);
         testClasses = filter.anyUserFilter(testClasses);
+        Collections.sort(testClasses);
         SpoonLogger.logInfo("loaded %d classes", testClasses.size());
         testClasses = filterByNodeIndex(testClasses, totalNodes, currentNode);
         SpoonLogger.logInfo("Filtered down to %d classes", testClasses.size());
@@ -152,6 +152,10 @@ final class SpoonInstrumentationInfo {
   }
 
   static List<TestClass> filterByNodeIndex(List<TestClass> list, int total, int cur) {
+    if (total == 1) {
+      return list;
+    }
+
     List<TestClass> ret = new ArrayList<TestClass>(list.size());
     for (int i = 0; i < list.size(); i++) {
       if (i % total == cur) {

@@ -14,6 +14,7 @@
 package com.squareup.spoon;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -24,6 +25,7 @@ class TestClassProvider {
 
     public TestClassProvider(List<TestClass> testClasses) {
         this.testClasses = new ArrayList<TestClass>(testClasses);
+        Collections.sort(testClasses);
     }
 
     /**

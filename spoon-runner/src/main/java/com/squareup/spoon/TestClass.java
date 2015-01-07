@@ -66,10 +66,18 @@ public class TestClass implements Comparable<TestClass> {
 
     @Override
     public int compareTo(TestClass testClass) {
-        if (testClass == null || testClass.getClassName() == null) {
+        if (testClass == null) {
+            throw new NullPointerException();
+        }
+        if (testClass.getClassName() == null) {
             return -1;
         }
 
-        return testClassName.compareTo(testClass.testClassName);
+        return this.testClassName.compareTo(testClass.testClassName);
+    }
+
+    @Override
+    public String toString() {
+        return "TestClass{" + "testClassName='" + testClassName + "\'}";
     }
 }
