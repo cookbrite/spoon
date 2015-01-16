@@ -32,6 +32,7 @@ public final class SpoonRunner {
   private static final String DEFAULT_TITLE = "Spoon Execution";
   public static final String DEFAULT_OUTPUT_DIRECTORY = "spoon-output";
   private static final int DEFAULT_ADB_TIMEOUT = 10 * 60; //10 minutes
+  private static final int DEFAULT_BATCH_SIZE = 5;
 
   private final String title;
   private final File androidSdk;
@@ -50,12 +51,13 @@ public final class SpoonRunner {
   private final int nodeCount;
   private final int currentNodeIndex;
   private final String filterPatterns;
+  private final int batchSize;
 
   private SpoonRunner(String title, File androidSdk, File applicationApk, File instrumentationApk,
       File output, boolean debug, boolean noAnimations, int adbTimeout, Set<String> serials,
       String classpath, String className, String methodName,
       IRemoteAndroidTestRunner.TestSize testSize, boolean failIfNoDeviceConnected,
-      int totalNodes, int currentNodeIndex, String filterPtrn) {
+      int totalNodes, int currentNodeIndex, int batchSize, String filterPtrn) {
     this.title = title;
     this.androidSdk = androidSdk;
     this.applicationApk = applicationApk;
@@ -73,6 +75,7 @@ public final class SpoonRunner {
     this.nodeCount = totalNodes;
     this.currentNodeIndex = currentNodeIndex - 1; // index is 0 based, but use 1 for cmd line
     this.filterPatterns = filterPtrn;
+    this.batchSize = batchSize;
     }
 
   /**
@@ -122,7 +125,7 @@ public final class SpoonRunner {
     final SpoonInstrumentationInfo testInfo =
             (nodeCount > 1 || !StringUtils.isEmpty(filterPatterns))
             ? parseFromFile(instrumentationApk, output, nodeCount,
-                currentNodeIndex, filterPatterns)
+                currentNodeIndex, batchSize, filterPatterns)
             : parseFromFile(instrumentationApk, output);
 
     logDebug(debug, "Application: %s from %s", testInfo.getApplicationPackage(),
@@ -233,6 +236,7 @@ public final class SpoonRunner {
     private int nodeCount;
     private int curIndex;
     private String filterPtrn;
+    private int batchSize;
 
     /** Identifying title for this execution. */
     public Builder setTitle(String title) {
@@ -355,6 +359,11 @@ public final class SpoonRunner {
       return this;
     }
 
+    public Builder setBatchSize(int bs) {
+      this.batchSize = bs;
+      return this;
+    }
+
     public SpoonRunner build() {
       checkNotNull(androidSdk, "SDK is required.");
       checkArgument(androidSdk.exists(), "SDK path does not exist.");
@@ -375,7 +384,7 @@ public final class SpoonRunner {
 
       return new SpoonRunner(title, androidSdk, applicationApk, instrumentationApk, output, debug,
           noAnimations, adbTimeout, serials, classpath, className, methodName, testSize,
-          failIfNoDeviceConnected, nodeCount, curIndex, filterPtrn);
+          failIfNoDeviceConnected, nodeCount, curIndex, batchSize, filterPtrn);
     }
   }
 
@@ -434,6 +443,9 @@ public final class SpoonRunner {
 
     @Parameter(names = {"--node-count" }, description = "Total number of nodes")
     public int nodeCount = 1;
+
+    @Parameter(names = {"--batch-size" }, description = "Run test in # batches")
+    public int batchSize = DEFAULT_BATCH_SIZE;
 
     @Parameter(names = { "--filter-pattern" },
             description = "Test class name filters, comma separated, Java regex")
@@ -499,6 +511,7 @@ public final class SpoonRunner {
         .useAllAttachedDevices()
         .setNodeCount(parsedArgs.nodeCount)
         .setCurrentNodeIndex(parsedArgs.nodeIndex)
+        .setBatchSize(parsedArgs.batchSize)
         .setFilterPatterns(parsedArgs.filterPatterns)
         .build();
 

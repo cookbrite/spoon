@@ -319,7 +319,7 @@ logDebug(debug, "done running tests");
                                 TestClassProvider testsProvider)
           throws TimeoutException, AdbCommandRejectedException,
           ShellCommandUnresponsiveException, IOException {
-    int testCount = 5;
+    int testCount = instrumentationInfo.getBatchSize();
     List<TestClass> cls = testsProvider.getNextTests(testCount);
     int run = 1;
     while (cls != null && cls.size() > 0) {

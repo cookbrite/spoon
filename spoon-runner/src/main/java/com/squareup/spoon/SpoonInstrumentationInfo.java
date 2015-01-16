@@ -23,16 +23,18 @@ final class SpoonInstrumentationInfo {
 
   private int totalNodes = 1;
   private int currentNode = 1;
+  private int batchSize = 5;
   private List<TestClass> totalClasses = null;
 
   SpoonInstrumentationInfo(String applicationPackage, String instrumentationPackage,
-      String testRunnerClass, List<TestClass> tc, int tn, int cn) {
+      String testRunnerClass, List<TestClass> tc, int tn, int cn, int bs) {
     this.applicationPackage = applicationPackage;
     this.instrumentationPackage = instrumentationPackage;
     this.testRunnerClass = testRunnerClass;
     this.totalClasses = tc;
     this.totalNodes = tn;
     this.currentNode = cn;
+    this.batchSize = bs;
   }
 
   String getApplicationPackage() {
@@ -71,17 +73,19 @@ final class SpoonInstrumentationInfo {
     return currentNode;
   }
 
+  int getBatchSize() {return batchSize;}
+
   @Override public String toString() {
     return ToStringBuilder.reflectionToString(this);
   }
 
   /** Parse key information from an instrumentation APK's manifest. */
   static SpoonInstrumentationInfo parseFromFile(File apkTestFile, File output) {
-    return parseFromFile(apkTestFile, output, 1, 1, null);
+    return parseFromFile(apkTestFile, output, 1, 1, 5, null);
   }
 
   static SpoonInstrumentationInfo parseFromFile(File apkTestFile, File output,
-                                                int totalNodes, int currentNode,
+                                                int totalNodes, int currentNode, int batchSize,
                                                 String filterPatterns) {
     InputStream is = null;
     try {
@@ -143,7 +147,7 @@ final class SpoonInstrumentationInfo {
       }
 
       return new SpoonInstrumentationInfo(appPackage, testPackage, testRunnerClass, testClasses,
-              totalNodes, currentNode);
+              totalNodes, currentNode, batchSize);
     } catch (IOException e) {
       throw new RuntimeException("Unable to parse test app AndroidManifest.xml.", e);
     } finally {
