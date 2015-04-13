@@ -107,6 +107,10 @@ Options:
     --no-animations     Disable animated gif generation
     --size              Only run test methods annotated by testSize (small, medium, large)
     --adb-timeout       Set maximum execution time per test in seconds (10min default)
+    --filter-pattern    Test class name filters, comma separated, Java regex
+    --node-count        Total number of nodes the tests will be sharded across
+    --node-index        The node index of the current runner (from 1 to --node-count, inclusive)
+    --batch-size        The number of tests to run in each batch of tests (we cannot send all the tests in one go as it exceeds the maximum command line argument length for adb - a value of 10 seems to work well)
 ```
 
 If you are using Maven for compilation, a plugin is provided for easy execution.
