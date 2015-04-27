@@ -551,7 +551,6 @@ public final class SpoonRunner {
         .setSequential(parsedArgs.sequential)
         .setClassName(parsedArgs.className)
         .setMethodName(parsedArgs.methodName)
-        .useAllAttachedDevices()
         .setNodeCount(parsedArgs.nodeCount)
         .setCurrentNodeIndex(parsedArgs.nodeIndex)
         .setBatchSize(parsedArgs.batchSize)
