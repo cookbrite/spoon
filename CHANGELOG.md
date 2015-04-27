@@ -1,6 +1,46 @@
 Change Log
 ==========
 
+Version 1.1.9 *(2015-04-02)*
+----------------------------
+
+* Fix: adb logs
+
+Version 1.1.8 *(2015-03-21)*
+----------------------------
+
+* Fix: timeout while deploying apk to the device
+
+Version 1.1.7 *(2015-03-18)*
+----------------------------
+
+* Fix: one more concurrent-adb issue.
+
+Version 1.1.6 *(2015-03-16)*
+----------------------------
+
+* Fix: a different approach to fixing the adb connection issues.
+
+Version 1.1.5 *(2015-03-16)*
+----------------------------
+
+* Fix: stacktrace in stdout when running on multiple devices.
+* Fix: disconnect from adb after running tests.
+
+Version 1.1.4 *(2015-03-16)*
+----------------------------
+
+* Allow specifying test class/method names in Spoon.screenshot call.
+
+Version 1.1.3 *(2015-03-13)*
+----------------------------
+
+* Fix screenshots on Lollipop.
+* Allow additional testRunListener.
+* Support junit4 test methods that do not start with "test".
+* Support junit4 tests that do not extend InstrumentationTestCase.
+* Support sequential running of tests.
+
 Version 1.1.2 *(2014-11-07)*
 ----------------------------
 

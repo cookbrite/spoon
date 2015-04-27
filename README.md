@@ -60,19 +60,21 @@ sequence of interaction.
 Download
 --------
 
-Download the [latest runner JAR][1] or the [latest client JAR][2], or grab
-via Maven:
+Download the [latest runner JAR][1] or the [latest client JAR][2], or just add to your dependencies:
 
+Maven:
 ```xml
 <dependency>
   <groupId>com.squareup.spoon</groupId>
   <artifactId>spoon-client</artifactId>
-  <version>1.1.1</version>
+  <version>1.1.7</version>
 </dependency>
 ```
 
-Snapshots of the development version are available in [Sonatype's `snapshots` repository][snap].
+Gradle:
+We recommend using the [gradle plugin][3] (currently maintained as a separate project).
 
+Snapshots of the development version are available in [Sonatype's `snapshots` repository][snap].
 
 
 Execution
@@ -107,10 +109,14 @@ Options:
     --no-animations     Disable animated gif generation
     --size              Only run test methods annotated by testSize (small, medium, large)
     --adb-timeout       Set maximum execution time per test in seconds (10min default)
+<<<<<<< HEAD
     --filter-pattern    Test class name filters, comma separated, Java regex
     --node-count        Total number of nodes the tests will be sharded across
     --node-index        The node index of the current runner (from 1 to --node-count, inclusive)
     --batch-size        The number of tests to run in each batch of tests (we cannot send all the tests in one go as it exceeds the maximum command line argument length for adb - a value of 10 seems to work well)
+=======
+    --sequential        Execute the tests device by device
+>>>>>>> master
 ```
 
 If you are using Maven for compilation, a plugin is provided for easy execution.
@@ -177,5 +183,6 @@ License
 
  [1]: https://search.maven.org/remote_content?g=com.squareup.spoon&a=spoon-runner&v=LATEST&c=jar-with-dependencies
  [2]: https://search.maven.org/remote_content?g=com.squareup.spoon&a=spoon-client&v=LATEST
+ [3]: https://github.com/stanfy/spoon-gradle-plugin
  [snap]: https://oss.sonatype.org/content/repositories/snapshots/
 

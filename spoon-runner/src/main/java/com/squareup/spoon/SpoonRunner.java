@@ -2,6 +2,7 @@ package com.squareup.spoon;
 
 import com.android.ddmlib.AndroidDebugBridge;
 import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner;
+import com.android.ddmlib.testrunner.ITestRunListener;
 import com.beust.jcommander.IStringConverter;
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
@@ -9,15 +10,22 @@ import com.beust.jcommander.ParameterException;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableSet;
 import com.squareup.spoon.html.HtmlRenderer;
+
+import org.apache.commons.io.FileUtils;
+
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -33,6 +41,7 @@ public final class SpoonRunner {
   public static final String DEFAULT_OUTPUT_DIRECTORY = "spoon-output";
   private static final int DEFAULT_ADB_TIMEOUT = 10 * 60; //10 minutes
   private static final int DEFAULT_BATCH_SIZE = 5;
+  private final ExecutorService threadExecutor;
 
   private final String title;
   private final File androidSdk;
@@ -48,6 +57,7 @@ public final class SpoonRunner {
   private final String classpath;
   private final IRemoteAndroidTestRunner.TestSize testSize;
   private final boolean failIfNoDeviceConnected;
+  private final List<ITestRunListener> testRunListeners;
   private final int nodeCount;
   private final int currentNodeIndex;
   private final String filterPatterns;
@@ -57,6 +67,7 @@ public final class SpoonRunner {
       File output, boolean debug, boolean noAnimations, int adbTimeout, Set<String> serials,
       String classpath, String className, String methodName,
       IRemoteAndroidTestRunner.TestSize testSize, boolean failIfNoDeviceConnected,
+      List<ITestRunListener> testRunListeners, boolean sequential,
       int totalNodes, int currentNodeIndex, int batchSize, String filterPtrn) {
     this.title = title;
     this.androidSdk = androidSdk;
@@ -76,7 +87,15 @@ public final class SpoonRunner {
     this.currentNodeIndex = currentNodeIndex - 1; // index is 0 based, but use 1 for cmd line
     this.filterPatterns = filterPtrn;
     this.batchSize = batchSize;
+
+    this.testRunListeners = testRunListeners;
+
+    if (sequential) {
+      this.threadExecutor = Executors.newSingleThreadExecutor();
+    } else {
+      this.threadExecutor = Executors.newCachedThreadPool();
     }
+  }
 
   /**
    * Install and execute the tests on all specified devices.
@@ -89,25 +108,21 @@ public final class SpoonRunner {
 
     AndroidDebugBridge adb = SpoonUtils.initAdb(androidSdk);
 
-    try {
-      // If we were given an empty serial set, load all available devices.
-      Set<String> serials = this.serials;
-      if (serials.isEmpty()) {
-        serials = SpoonUtils.findAllDevices(adb);
-      }
-      if (failIfNoDeviceConnected && serials.isEmpty()) {
-        throw new RuntimeException("No device(s) found.");
-      }
-
-      // Execute all the things...
-      SpoonSummary summary = runTests(adb, serials);
-      // ...and render to HTML
-      new HtmlRenderer(summary, SpoonUtils.GSON, output).render();
-
-      return parseOverallSuccess(summary);
-    } finally {
-      AndroidDebugBridge.terminate();
+    // If we were given an empty serial set, load all available devices.
+    Set<String> serials = this.serials;
+    if (serials.isEmpty()) {
+      serials = SpoonUtils.findAllDevices(adb);
     }
+    if (failIfNoDeviceConnected && serials.isEmpty()) {
+      throw new RuntimeException("No device(s) found.");
+    }
+
+    // Execute all the things...
+    SpoonSummary summary = runTests(adb, serials);
+    // ...and render to HTML
+    new HtmlRenderer(summary, SpoonUtils.GSON, output).render();
+
+    return parseOverallSuccess(summary);
   }
 
   private SpoonSummary runTests(AndroidDebugBridge adb, Set<String> serials) {
@@ -160,11 +175,12 @@ public final class SpoonRunner {
       for (final String serial : serials) {
         final String safeSerial = SpoonUtils.sanitizeSerial(serial);
         logDebug(debug, "[%s] Starting execution.", serial);
-        new Thread(new Runnable() {
+        Runnable runnable = new Runnable() {
           @Override public void run() {
             try {
               summary.addResult(safeSerial, getTestRunner(serial, testInfo).runInNewProcess());
             } catch (Exception e) {
+              e.printStackTrace(System.out);
               summary.addResult(safeSerial, new DeviceResult.Builder().addException(e).build());
             } finally {
               done.countDown();
@@ -173,11 +189,14 @@ public final class SpoonRunner {
                   remaining);
             }
           }
-        }).start();
+        };
+
+        threadExecutor.execute(runnable);
       }
 
       try {
         done.await();
+        threadExecutor.shutdown();
       } catch (InterruptedException e) {
         throw new RuntimeException(e);
       }
@@ -214,7 +233,8 @@ public final class SpoonRunner {
 
   private SpoonDeviceRunner getTestRunner(String serial, SpoonInstrumentationInfo testInfo) {
     return new SpoonDeviceRunner(androidSdk, applicationApk, instrumentationApk, output, serial,
-        debug, noAnimations, adbTimeout, classpath, testInfo, className, methodName, testSize);
+        debug, noAnimations, adbTimeout, classpath, testInfo, className, methodName, testSize,
+        testRunListeners);
   }
 
   /** Build a test suite for the specified devices and configuration. */
@@ -233,6 +253,8 @@ public final class SpoonRunner {
     private IRemoteAndroidTestRunner.TestSize testSize;
     private int adbTimeout;
     private boolean failIfNoDeviceConnected;
+    private List<ITestRunListener> testRunListeners = new ArrayList<ITestRunListener>();
+    private boolean sequential;
     private int nodeCount;
     private int curIndex;
     private String filterPtrn;
@@ -339,6 +361,11 @@ public final class SpoonRunner {
       return this;
     }
 
+    public Builder setSequential(boolean sequential) {
+      this.sequential = sequential;
+      return this;
+    }
+
     public Builder setMethodName(String methodName) {
       this.methodName = methodName;
       return this;
@@ -364,6 +391,12 @@ public final class SpoonRunner {
       return this;
     }
 
+    public Builder addTestRunListener(ITestRunListener testRunListener) {
+      checkNotNull(testRunListener, "TestRunListener cannot be null.");
+      testRunListeners.add(testRunListener);
+      return this;
+    }
+
     public SpoonRunner build() {
       checkNotNull(androidSdk, "SDK is required.");
       checkArgument(androidSdk.exists(), "SDK path does not exist.");
@@ -384,27 +417,27 @@ public final class SpoonRunner {
 
       return new SpoonRunner(title, androidSdk, applicationApk, instrumentationApk, output, debug,
           noAnimations, adbTimeout, serials, classpath, className, methodName, testSize,
-          failIfNoDeviceConnected, nodeCount, curIndex, batchSize, filterPtrn);
+          failIfNoDeviceConnected, testRunListeners, sequential, nodeCount, curIndex, batchSize, filterPtrn);
     }
   }
 
   static class CommandLineArgs {
-    @Parameter(names = { "--title" }, description = "Execution title")
+    @Parameter(names = { "--title" }, description = "Execution title") //
     public String title = DEFAULT_TITLE;
 
     @Parameter(names = { "--apk" }, description = "Application APK",
-        converter = FileConverter.class, required = true)
+        converter = FileConverter.class, required = true) //
     public File apk;
 
     @Parameter(names = { "--test-apk" }, description = "Test application APK",
-        converter = FileConverter.class, required = true)
+        converter = FileConverter.class, required = true) //
     public File testApk;
 
     @Parameter(names = { "--class-name" }, description = "Test class name to run (fully-qualified)")
     public String className;
 
-    @Parameter(names = { "--method-name" }, description =
-        "Test method name to run (must also use --class-name)")
+    @Parameter(names = { "--method-name" },
+        description = "Test method name to run (must also use --class-name)") //
     public String methodName;
 
     @Parameter(names = { "--size" }, converter = TestSizeConverter.class,
@@ -412,27 +445,36 @@ public final class SpoonRunner {
     public IRemoteAndroidTestRunner.TestSize size;
 
     @Parameter(names = { "--output" }, description = "Output path",
-        converter = FileConverter.class)
+        converter = FileConverter.class) //
     public File output = cleanFile(SpoonRunner.DEFAULT_OUTPUT_DIRECTORY);
 
-    @Parameter(names = { "--sdk" }, description = "Path to Android SDK")
+    @Parameter(names = { "--sdk" }, description = "Path to Android SDK") //
     public File sdk = cleanFile(System.getenv("ANDROID_HOME"));
 
     @Parameter(names = { "--fail-on-failure" }, description = "Non-zero exit code on failure")
     public boolean failOnFailure;
 
     @Parameter(names = { "--fail-if-no-device-connected" },
-         description = "Fail if no device is connected")
+        description = "Fail if no device is connected") //
     public boolean failIfNoDeviceConnected;
+
+    @Parameter(names = { "--sequential" },
+        description = "Execute tests sequentially (one device at a time)") //
+    public boolean sequential;
 
     @Parameter(names = { "--no-animations" }, description = "Disable animated gif generation")
     public boolean noAnimations;
 
     @Parameter(names = { "--adb-timeout" },
-        description = "Set maximum execution time per test in seconds (10min default)")
+        description = "Set maximum execution time per test in seconds (10min default)") //
     public int adbTimeoutSeconds = DEFAULT_ADB_TIMEOUT;
 
-    @Parameter(names = { "--debug" }, hidden = true)
+    @SuppressWarnings("MismatchedQueryAndUpdateOfCollection") //
+    @Parameter(names = "-serial",
+        description = "Serial of the device to use (May be used multiple times)")
+    private List<String> serials = new ArrayList<String>();
+
+    @Parameter(names = { "--debug" }, hidden = true) //
     public boolean debug;
 
     @Parameter(names = { "-h", "--help" }, description = "Command help", help = true, hidden = true)
@@ -495,7 +537,7 @@ public final class SpoonRunner {
       return;
     }
 
-    SpoonRunner spoonRunner = new SpoonRunner.Builder() //
+    Builder builder = new SpoonRunner.Builder() //
         .setTitle(parsedArgs.title)
         .setApplicationApk(parsedArgs.apk)
         .setInstrumentationApk(parsedArgs.testApk)
@@ -506,14 +548,24 @@ public final class SpoonRunner {
         .setTestSize(parsedArgs.size)
         .setAdbTimeout(parsedArgs.adbTimeoutSeconds * 1000)
         .setFailIfNoDeviceConnected(parsedArgs.failIfNoDeviceConnected)
+        .setSequential(parsedArgs.sequential)
         .setClassName(parsedArgs.className)
         .setMethodName(parsedArgs.methodName)
         .useAllAttachedDevices()
         .setNodeCount(parsedArgs.nodeCount)
         .setCurrentNodeIndex(parsedArgs.nodeIndex)
         .setBatchSize(parsedArgs.batchSize)
-        .setFilterPatterns(parsedArgs.filterPatterns)
-        .build();
+        .setFilterPatterns(parsedArgs.filterPatterns);
+
+    if (parsedArgs.serials == null || parsedArgs.serials.isEmpty()) {
+      builder.useAllAttachedDevices();
+    } else {
+      for (String serial : parsedArgs.serials) {
+        builder.addDevice(serial);
+      }
+    }
+
+    SpoonRunner spoonRunner = builder.build();
 
     if (!spoonRunner.run() && parsedArgs.failOnFailure) {
       System.exit(1);
