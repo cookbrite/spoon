@@ -298,7 +298,7 @@ public final class SpoonDeviceRunner {
         runTestInBatches(testPackage, testRunner, device, testIdentifierAdapter, result,
                 testsProvider);
       } else {
-        List<ITestRunListener> listeners = getiTestRunListeners(result, testIdentifierAdapter);
+        List<ITestRunListener> listeners = getTestRunListeners(result, testIdentifierAdapter);
         runner.run(listeners);
       }
     } catch (Exception e) {
@@ -308,9 +308,10 @@ public final class SpoonDeviceRunner {
     }
   }
 
-    private List<ITestRunListener> getiTestRunListeners(DeviceResult.Builder result, TestIdentifierAdapter testIdentifierAdapter) {
+    private List<ITestRunListener> getTestRunListeners(DeviceResult.Builder result,
+                                                       TestIdentifierAdapter adapter) {
       List<ITestRunListener> listeners = new ArrayList<ITestRunListener>();
-      listeners.add(new SpoonTestRunListener(result, debug, testIdentifierAdapter));
+      listeners.add(new SpoonTestRunListener(result, debug, adapter));
       listeners.add(new XmlTestRunListener(junitReport));
       if (testRunListeners != null) {
         listeners.addAll(testRunListeners);
@@ -343,7 +344,7 @@ public final class SpoonDeviceRunner {
       File f = FileUtils.getFile(junitReportDir, serial
                 + "_" + String.valueOf(run) + ".xml");
       logDebug(debug, "logging JUnit to %s", f.getPath());
-      List<ITestRunListener> listeners = getiTestRunListeners(result, testIdentifierAdapter);
+      List<ITestRunListener> listeners = getTestRunListeners(result, testIdentifierAdapter);
       runner.run(listeners);
 
       cls = testsProvider.getNextTests(testCount);

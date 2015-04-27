@@ -73,7 +73,9 @@ final class SpoonInstrumentationInfo {
     return currentNode;
   }
 
-  int getBatchSize() {return batchSize;}
+  int getBatchSize() {
+    return batchSize;
+  }
 
   @Override public String toString() {
     return ToStringBuilder.reflectionToString(this);
