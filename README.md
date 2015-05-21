@@ -1,3 +1,5 @@
+*Update: we've found a better approach than using this feature/multi-node branch.  See http://stackoverflow.com/a/29612647/112705 for an explanation of what we would recommend instead.*
+
 Spoon
 =====
 
