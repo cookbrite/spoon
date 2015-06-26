@@ -97,21 +97,25 @@ public final class SpoonRunner {
 
     AndroidDebugBridge adb = SpoonUtils.initAdb(androidSdk);
 
-    // If we were given an empty serial set, load all available devices.
-    Set<String> serials = this.serials;
-    if (serials.isEmpty()) {
-      serials = SpoonUtils.findAllDevices(adb);
-    }
-    if (failIfNoDeviceConnected && serials.isEmpty()) {
-      throw new RuntimeException("No device(s) found.");
-    }
+    try {
+      // If we were given an empty serial set, load all available devices.
+      Set<String> serials = this.serials;
+      if (serials.isEmpty()) {
+        serials = SpoonUtils.findAllDevices(adb);
+      }
+      if (failIfNoDeviceConnected && serials.isEmpty()) {
+        throw new RuntimeException("No device(s) found.");
+      }
 
-    // Execute all the things...
-    SpoonSummary summary = runTests(adb, serials);
-    // ...and render to HTML
-    new HtmlRenderer(summary, SpoonUtils.GSON, output).render();
+      // Execute all the things...
+      SpoonSummary summary = runTests(adb, serials);
+      // ...and render to HTML
+      new HtmlRenderer(summary, SpoonUtils.GSON, output).render();
 
-    return parseOverallSuccess(summary);
+      return parseOverallSuccess(summary);
+    } finally {
+      AndroidDebugBridge.terminate();
+    }
   }
 
   private SpoonSummary runTests(AndroidDebugBridge adb, Set<String> serials) {
