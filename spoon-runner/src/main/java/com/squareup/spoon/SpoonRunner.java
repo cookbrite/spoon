@@ -86,7 +86,7 @@ public final class SpoonRunner {
     this.serials = ImmutableSet.copyOf(serials);
     this.failIfNoDeviceConnected = failIfNoDeviceConnected;
     this.nodeCount = totalNodes;
-    this.currentNodeIndex = currentNodeIndex - 1; // index is 0 based, but use 1 for cmd line
+    this.currentNodeIndex = currentNodeIndex; // index is 0 based
     this.filterPatterns = filterPtrn;
     this.batchSize = batchSize;
 
@@ -431,7 +431,7 @@ public final class SpoonRunner {
       }
 
       if (nodeCount > 1) {
-        checkArgument(curIndex > 0 && curIndex <= nodeCount,
+        checkArgument(curIndex >= 0 && curIndex < nodeCount,
             "current node index cannot be less than 0 or greater than total %d",
              curIndex);
       }
@@ -507,8 +507,8 @@ public final class SpoonRunner {
     @Parameter(names = { "-h", "--help" }, description = "Command help", help = true, hidden = true)
     public boolean help;
 
-    @Parameter(names = { "--node-index" }, description = "Node Index of current runner")
-    public int nodeIndex = 1;
+    @Parameter(names = { "--node-index" }, description = "Node Index of current runner, 0 based")
+    public int nodeIndex = 0;
 
     @Parameter(names = {"--node-count" }, description = "Total number of nodes")
     public int nodeCount = 1;
