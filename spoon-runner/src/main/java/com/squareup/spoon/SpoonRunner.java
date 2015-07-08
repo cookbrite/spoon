@@ -7,7 +7,6 @@ import com.beust.jcommander.IStringConverter;
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParameterException;
-import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableSet;
 import com.squareup.spoon.html.HtmlRenderer;
 
@@ -28,6 +27,7 @@ import java.util.concurrent.Executors;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
+import static com.google.common.base.Strings.isNullOrEmpty;
 import static com.squareup.spoon.DeviceTestResult.Status;
 import static com.squareup.spoon.SpoonInstrumentationInfo.parseFromFile;
 import static com.squareup.spoon.SpoonLogger.logDebug;
@@ -50,6 +50,7 @@ public final class SpoonRunner {
   private final boolean debug;
   private final boolean noAnimations;
   private final int adbTimeout;
+  private final List<String> instrumentationArgs;
   private final String className;
   private final String methodName;
   private final Set<String> serials;
@@ -61,12 +62,13 @@ public final class SpoonRunner {
   private final int currentNodeIndex;
   private final String filterPatterns;
   private final int batchSize;
+  private final boolean terminateAdb;
 
   private SpoonRunner(String title, File androidSdk, File applicationApk, File instrumentationApk,
       File output, boolean debug, boolean noAnimations, int adbTimeout, Set<String> serials,
-      String classpath, String className, String methodName,
+      String classpath, List<String> instrumentationArgs, String className, String methodName,
       IRemoteAndroidTestRunner.TestSize testSize, boolean failIfNoDeviceConnected,
-      List<ITestRunListener> testRunListeners, boolean sequential,
+      List<ITestRunListener> testRunListeners, boolean sequential, boolean terminateAdb,
       int totalNodes, int currentNodeIndex, int batchSize, String filterPtrn) {
     this.title = title;
     this.androidSdk = androidSdk;
@@ -76,6 +78,7 @@ public final class SpoonRunner {
     this.debug = debug;
     this.noAnimations = noAnimations;
     this.adbTimeout = adbTimeout;
+    this.instrumentationArgs = instrumentationArgs;
     this.className = className;
     this.methodName = methodName;
     this.classpath = classpath;
@@ -88,6 +91,7 @@ public final class SpoonRunner {
     this.batchSize = batchSize;
 
     this.testRunListeners = testRunListeners;
+    this.terminateAdb = terminateAdb;
 
     if (sequential) {
       this.threadExecutor = Executors.newSingleThreadExecutor();
@@ -107,21 +111,27 @@ public final class SpoonRunner {
 
     AndroidDebugBridge adb = SpoonUtils.initAdb(androidSdk);
 
-    // If we were given an empty serial set, load all available devices.
-    Set<String> serials = this.serials;
-    if (serials.isEmpty()) {
-      serials = SpoonUtils.findAllDevices(adb);
-    }
-    if (failIfNoDeviceConnected && serials.isEmpty()) {
-      throw new RuntimeException("No device(s) found.");
-    }
+    try {
+      // If we were given an empty serial set, load all available devices.
+      Set<String> serials = this.serials;
+      if (serials.isEmpty()) {
+        serials = SpoonUtils.findAllDevices(adb);
+      }
+      if (failIfNoDeviceConnected && serials.isEmpty()) {
+        throw new RuntimeException("No device(s) found.");
+      }
 
-    // Execute all the things...
-    SpoonSummary summary = runTests(adb, serials);
-    // ...and render to HTML
-    new HtmlRenderer(summary, SpoonUtils.GSON, output).render();
+      // Execute all the things...
+      SpoonSummary summary = runTests(adb, serials);
+      // ...and render to HTML
+      new HtmlRenderer(summary, SpoonUtils.GSON, output).render();
 
-    return parseOverallSuccess(summary);
+      return parseOverallSuccess(summary);
+    } finally {
+      if (terminateAdb) {
+        AndroidDebugBridge.terminate();
+      }
+    }
   }
 
   private SpoonSummary runTests(AndroidDebugBridge adb, Set<String> serials) {
@@ -232,8 +242,8 @@ public final class SpoonRunner {
 
   private SpoonDeviceRunner getTestRunner(String serial, SpoonInstrumentationInfo testInfo) {
     return new SpoonDeviceRunner(androidSdk, applicationApk, instrumentationApk, output, serial,
-        debug, noAnimations, adbTimeout, classpath, testInfo, className, methodName, testSize,
-        testRunListeners);
+        debug, noAnimations, adbTimeout, classpath, testInfo, instrumentationArgs, className,
+        methodName, testSize, testRunListeners);
   }
 
   /** Build a test suite for the specified devices and configuration. */
@@ -246,6 +256,7 @@ public final class SpoonRunner {
     private boolean debug = false;
     private Set<String> serials;
     private String classpath = System.getProperty("java.class.path");
+    private List<String> instrumentationArgs;
     private String className;
     private String methodName;
     private boolean noAnimations;
@@ -258,6 +269,7 @@ public final class SpoonRunner {
     private int curIndex;
     private String filterPtrn;
     private int batchSize;
+    private boolean terminateAdb = true;
 
     /** Identifying title for this execution. */
     public Builder setTitle(String title) {
@@ -277,7 +289,7 @@ public final class SpoonRunner {
     /** Path to application APK. */
     public Builder setApplicationApk(File apk) {
       checkNotNull(apk, "APK path not specified.");
-      checkArgument(apk.exists(), "APK path does not exist.");
+        checkArgument(apk.exists(), "APK path does not exist.");
       this.applicationApk = apk;
       return this;
     }
@@ -292,7 +304,7 @@ public final class SpoonRunner {
 
     /** Path to output directory. */
     public Builder setOutputDirectory(File output) {
-      checkNotNull(output, "Output directory not specified.");
+        checkNotNull(output, "Output directory not specified.");
       this.output = output;
       return this;
     }
@@ -340,8 +352,13 @@ public final class SpoonRunner {
 
     /** Classpath to use for new JVM processes. */
     public Builder setClasspath(String classpath) {
-      checkNotNull(classpath, "Classpath cannot be null.");
+        checkNotNull(classpath, "Classpath cannot be null.");
       this.classpath = classpath;
+      return this;
+    }
+
+    public Builder setInstrumentationArgs(List<String> instrumentationArgs) {
+      this.instrumentationArgs = instrumentationArgs;
       return this;
     }
 
@@ -396,6 +413,11 @@ public final class SpoonRunner {
       return this;
     }
 
+    public Builder setTerminateAdb(boolean terminateAdb) {
+      this.terminateAdb = terminateAdb;
+      return this;
+    }
+
     public SpoonRunner build() {
       checkNotNull(androidSdk, "SDK is required.");
       checkArgument(androidSdk.exists(), "SDK path does not exist.");
@@ -403,8 +425,8 @@ public final class SpoonRunner {
       checkNotNull(instrumentationApk, "Instrumentation APK is required.");
       checkNotNull(output, "Output path is required.");
       checkNotNull(serials, "Device serials are required.");
-      if (!Strings.isNullOrEmpty(methodName)) {
-        checkArgument(!Strings.isNullOrEmpty(className),
+      if (!isNullOrEmpty(methodName)) {
+        checkArgument(!isNullOrEmpty(className),
             "Must specify class name if you're specifying a method name.");
       }
 
@@ -415,9 +437,9 @@ public final class SpoonRunner {
       }
 
       return new SpoonRunner(title, androidSdk, applicationApk, instrumentationApk, output, debug,
-          noAnimations, adbTimeout, serials, classpath, className, methodName, testSize,
-          failIfNoDeviceConnected, testRunListeners, sequential, nodeCount, curIndex, batchSize,
-          filterPtrn);
+          noAnimations, adbTimeout, serials, classpath, instrumentationArgs, className, methodName,
+          testSize, failIfNoDeviceConnected, testRunListeners, sequential, terminateAdb,
+          nodeCount, curIndex, batchSize, filterPtrn);
     }
   }
 
@@ -432,6 +454,11 @@ public final class SpoonRunner {
     @Parameter(names = { "--test-apk" }, description = "Test application APK",
         converter = FileConverter.class, required = true) //
     public File testApk;
+
+    @Parameter(names = { "--e" },
+        description = "Arguments to pass to the Instrumentation Runner. This can be used multiple"
+            + " times for multiple entries. Usage: --e <NAME>=<VALUE>.")
+    public List<String> instrumentationArgs;
 
     @Parameter(names = { "--class-name" }, description = "Test class name to run (fully-qualified)")
     public String className;
@@ -549,6 +576,7 @@ public final class SpoonRunner {
         .setAdbTimeout(parsedArgs.adbTimeoutSeconds * 1000)
         .setFailIfNoDeviceConnected(parsedArgs.failIfNoDeviceConnected)
         .setSequential(parsedArgs.sequential)
+        .setInstrumentationArgs(parsedArgs.instrumentationArgs)
         .setClassName(parsedArgs.className)
         .setMethodName(parsedArgs.methodName)
         .setNodeCount(parsedArgs.nodeCount)
