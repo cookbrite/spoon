@@ -321,17 +321,22 @@ public final class SpoonDeviceRunner {
       result.addException(e);
     }
   }
+  private List<ITestRunListener> getTestRunListeners(DeviceResult.Builder result,
+                                                     TestIdentifierAdapter adapter) {
+    return getTestRunListeners(result, adapter, this.junitReport);
+  }
 
-    private List<ITestRunListener> getTestRunListeners(DeviceResult.Builder result,
-                                                       TestIdentifierAdapter adapter) {
+  private List<ITestRunListener> getTestRunListeners(DeviceResult.Builder result,
+                                                     TestIdentifierAdapter adapter,
+                                                     File junitReportFile) {
       List<ITestRunListener> listeners = new ArrayList<ITestRunListener>();
       listeners.add(new SpoonTestRunListener(result, debug, adapter));
-      listeners.add(new XmlTestRunListener(junitReport));
+      listeners.add(new XmlTestRunListener(junitReportFile));
       if (testRunListeners != null) {
         listeners.addAll(testRunListeners);
       }
       return listeners;
-    }
+  }
 
     // TODO add  comment why we need to run in batches
   private void runTestInBatches(String testPackage,
@@ -354,11 +359,10 @@ public final class SpoonDeviceRunner {
       }
       runner.setClassNames(testClassNames);
       logDebug(debug, "Running tests");
-      // TODO does not work with genymotion, somehow filename is wrong and no output
-      File f = FileUtils.getFile(junitReportDir, serial
-                + "_" + String.valueOf(run) + ".xml");
-      logDebug(debug, "logging JUnit to %s", f.getPath());
-      List<ITestRunListener> listeners = getTestRunListeners(result, testIdentifierAdapter);
+      File perRunJunitReport = FileUtils.getFile(junitReportDir,
+              serial + "_" + String.valueOf(run) + ".xml");
+      List<ITestRunListener> listeners = getTestRunListeners(result, testIdentifierAdapter,
+              perRunJunitReport);
       runner.run(listeners);
 
       cls = testsProvider.getNextTests(testCount);
